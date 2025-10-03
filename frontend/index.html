@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Healthcare Triage Bot</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: Inter, system-ui, sans-serif; }
+    #chatBox { max-height: 300px; overflow-y: auto; }
+    .msg-user { text-align: right; color: white; background: #10b981; padding: 8px 12px; border-radius: 12px; display: inline-block; margin: 4px; }
+    .msg-bot { text-align: left; color: black; background: #f1f5f9; padding: 8px 12px; border-radius: 12px; display: inline-block; margin: 4px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+  <div class="max-w-4xl mx-auto px-4 py-10">
+    <!-- Header -->
+    <header class="flex items-center gap-3 mb-8">
+      <div class="h-10 w-10 rounded-xl bg-emerald-500 text-white grid place-items-center text-xl">🩺</div>
+      <div>
+        <h1 class="text-2xl font-bold">Healthcare Triage Bot</h1>
+        <p class="text-slate-500">Type your symptoms. Get guidance. Hear the response.</p>
+      </div>
+    </header>
+
+    <!-- Chat Section -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h2 class="text-lg font-semibold mb-3">Chat with Bot 💬</h2>
+      <div id="chatBox" class="bg-slate-50 p-3 rounded-lg mb-3 h-64 overflow-y-auto"></div>
+      <div class="flex gap-2">
+        <input id="chatInput" type="text" placeholder="Type your symptoms..." class="flex-1 px-3 py-2 border rounded-lg">
+        <button id="sendBtn" class="px-4 py-2 rounded-lg bg-emerald-600 text-white">Send</button>
+      </div>
+    </section>
+
+    <!-- Player -->
+    <section class="mt-8 bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="font-semibold">Bot Reply (Audio)</h3>
+          <p class="text-sm text-slate-500">Auto-plays after advice is ready.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button id="replayBtn" class="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50">Replay 🔁</button>
+          <audio id="player" controls class="h-10"></audio>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+  const API_BASE = "http://127.0.0.1:8000";
+  const LANGUAGE = "en";
+
+  const $ = s => document.querySelector(s);
+  const player = $('#player');
+  const chatBox = $('#chatBox'), chatInput = $('#chatInput'), sendBtn = $('#sendBtn');
+
+  // Append messages to chat
+  function addMessage(text, sender="bot") {
+    const div=document.createElement("div");
+    div.className = sender==="user" ? "msg-user" : "msg-bot";
+    div.textContent = text;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  // Chat send handler
+  sendBtn.addEventListener("click", async ()=>{
+    const msg = chatInput.value.trim();
+    if(!msg) return;
+    addMessage(msg,"user");
+    chatInput.value="";
+
+    // Call triage endpoint
+    const res = await fetch(`${API_BASE}/triage/`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({symptoms: msg, language: LANGUAGE})
+    });
+    const data = await res.json();
+    const advice = data.triage || data.result || "No advice.";
+    addMessage(advice,"bot");
+
+    // Call TTS
+    const ttsRes=await fetch(`${API_BASE}/tts/`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({text:advice})
+    });
+    if(ttsRes.ok){
+      const audioBlob=await ttsRes.blob();
+      player.src=URL.createObjectURL(audioBlob);
+      player.play().catch(()=>{});
+    }
+  });
+
+  // Replay button
+  $('#replayBtn').addEventListener('click', ()=>{ if(player.src) player.play(); });
+  </script>
+</body>
+</html>
