@@ -1,0 +1,19 @@
+# Ignore virtual environments
+backend/.venv/
+venv/
+
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment files (API keys, secrets, etc.)
+.env
+.env.*
+
+# VS Code workspace settings
+.vscode/
+
+# OS specific files
+.DS_Store
+Thumbs.db
